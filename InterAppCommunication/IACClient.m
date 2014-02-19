@@ -39,7 +39,12 @@
 }
 
 - (BOOL)isAppInstalled {
-    return [[UIApplication sharedApplication] canOpenURL:[NSURL URLWithString:[NSString stringWithFormat:@"%@://Test", self.URLScheme]]];
+    NSURL *testURL = [NSURL URLWithString:[NSString stringWithFormat:@"%@://Test", self.URLScheme]];
+#if TARGET_OS_IPHONE
+    return [[UIApplication sharedApplication] canOpenURL:testURL];
+#else
+    return [[NSWorkspace sharedWorkspace] URLForApplicationToOpenURL:testURL] != nil;
+#endif
 }
 
 - (void)performAction:(NSString*)action {
