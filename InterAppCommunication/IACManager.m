@@ -10,7 +10,6 @@
 #import "IACDelegate.h"
 #import "IACClient.h"
 #import "IACRequest.h"
-#import "NSString+IACExtensions.h"
 
 
 #if !__has_feature(objc_arc)
@@ -79,8 +78,9 @@ typedef NS_ENUM(NSUInteger, IACResponseType) {
     
     // If the url is an x-callback-url compatible url we handle it
     if ([url.host isEqualToString:kXCUHost]) {
-        NSString     *action     = [[url path] substringFromIndex:1];
-        NSDictionary *parameters = [url.query parseURLParams];
+        NSString     *action     = [[url pathComponents] count] > 1 ? [url pathComponents][1] : @"";
+        NSDictionary *parameters = [self paramsFromURL:url];
+
         NSDictionary *actionParamters = [self removeProtocolParamsFromDictionary:parameters];
         
         
@@ -139,7 +139,8 @@ typedef NS_ENUM(NSUInteger, IACResponseType) {
                         [self openURL:[NSURL URLWithString:parameters[kXCUCancel]]];
                     }
                 } else if (parameters[kXCUSuccess]) {
-                    [self openURL:[NSURL URLWithString:[parameters[kXCUSuccess] stringByAppendingURLParams:returnParams]]];
+                    NSURL *url = [self URLByAppendingParams:returnParams toURL:parameters[kXCUSuccess]];
+                    [self openURL:url];
                 }
             };
             
@@ -149,7 +150,8 @@ typedef NS_ENUM(NSUInteger, IACResponseType) {
                                                    kXCUErrorMessage: [error localizedDescription],
                                                    kIACErrorDomain: [error domain]
                                                    };
-                    [self openURL:[NSURL URLWithString:[parameters[kXCUError] stringByAppendingURLParams:errorParams]]];
+                    NSURL *url = [self URLByAppendingParams:errorParams toURL:parameters[kXCUError]];
+                    [self openURL:url];
                 }
             };
 
@@ -173,7 +175,8 @@ typedef NS_ENUM(NSUInteger, IACResponseType) {
                                                kXCUErrorMessage: [NSString stringWithFormat:NSLocalizedString(@"'%@' is not an x-callback-url action supported by %@", nil), action, [self localizedAppName]],
                                                kIACErrorDomain: IACErrorDomain
                                              };
-                [self openURL:[NSURL URLWithString:[parameters[kXCUError] stringByAppendingURLParams:errorParams]]];
+                NSURL *url = [self URLByAppendingParams:errorParams toURL:parameters[kXCUError]];
+                [self openURL:url];
                 return YES;
             }
         }
@@ -195,33 +198,44 @@ typedef NS_ENUM(NSUInteger, IACResponseType) {
         return;
     }
     
-    NSString *final_url = [NSString stringWithFormat:@"%@://%@/%@?", request.client.URLScheme, kXCUHost, request.action];
-    final_url = [final_url stringByAppendingURLParams:request.parameters];
-    final_url = [final_url stringByAppendingURLParams:@{kXCUSource: [self localizedAppName]}];
+    
+    NSURLComponents *components = [[NSURLComponents alloc] init];
+    components.scheme = request.client.URLScheme;
+    components.host = kXCUHost;
+    components.path = request.action;
+    
+    NSURL *final_url = [components URL];
+    final_url = [self URLByAppendingParams:request.parameters toURL:final_url];
+    final_url = [self URLByAppendingParams:@{kXCUSource: [self localizedAppName]} toURL:final_url];
     
     if (self.callbackURLScheme) {
-        NSString *xcu = [NSString stringWithFormat:@"%@://%@/%@?", self.callbackURLScheme, kXCUHost, kIACResponse];
-        xcu = [xcu stringByAppendingURLParams:@{kIACRequest:request.requestID}];
+        components = [[NSURLComponents alloc] init];
+        components.scheme = self.callbackURLScheme;
+        components.host = kXCUHost;
+        components.path = kIACResponse;
+
+        NSURL *xcu = [components URL];
+        xcu = [self URLByAppendingParams:@{kIACRequest:request.requestID} toURL:xcu];
         
         NSMutableDictionary *xcu_params = [NSMutableDictionary dictionary];
         
         if (request.successCalback) {
-            xcu_params[kXCUSuccess] = [xcu stringByAppendingURLParams:@{kIACResponseType:@(IACResponseTypeSuccess)}];
-            xcu_params[kXCUCancel] = [xcu stringByAppendingURLParams:@{kIACResponseType:@(IACResponseTypeCancel)}];
+            xcu_params[kXCUSuccess] = [self URLByAppendingParams:@{kIACResponseType:@(IACResponseTypeSuccess)} toURL:xcu];
+            xcu_params[kXCUCancel] = [self URLByAppendingParams:@{kIACResponseType:@(IACResponseTypeCancel)} toURL:xcu];
         }
         
         if (request.errorCalback) {
-            xcu_params[kXCUError] = [xcu stringByAppendingURLParams:@{kIACResponseType:@(IACResponseTypeFailure)}];
+            xcu_params[kXCUError] = [self URLByAppendingParams:@{kIACResponseType:@(IACResponseTypeFailure)} toURL:xcu];
         }
         
-        final_url = [final_url stringByAppendingURLParams:xcu_params];
+        final_url = [self URLByAppendingParams:xcu_params toURL:final_url];
     } else if (request.successCalback || request.errorCalback) {
         NSLog(@"WARNING: If you want to support callbacks from the remote app you must define a URL Scheme for this app to listen on");
     }
         
     sessions[request.requestID] = request;
     
-    [self openURL:[NSURL URLWithString:final_url]];
+    [self openURL:final_url];
 }
 
 
@@ -230,6 +244,42 @@ typedef NS_ENUM(NSUInteger, IACResponseType) {
 }
 
 
+- (NSURL *)URLByAppendingParams:(NSDictionary *)params toURL:(NSURL *)url
+{
+    NSURLComponents *urlComponents = [NSURLComponents componentsWithURL:url resolvingAgainstBaseURL:NO];
+    
+    NSString *queryString = urlComponents.query;
+    
+    NSMutableArray *paramArray = [NSMutableArray array];
+    [params enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
+        [paramArray addObject:[NSString stringWithFormat:@"%@=%@", key, obj]];
+    }];
+    if ([queryString length] == 0) {
+        queryString = [paramArray componentsJoinedByString:@"&"];
+    } else {
+        queryString = [queryString stringByAppendingFormat:@"&%@", [paramArray componentsJoinedByString:@"&"]];
+    }
+    urlComponents.query = queryString;
+    return [urlComponents URL];
+}
+
+- (NSDictionary *)paramsFromURL:(NSURL *)url
+{
+    NSURLComponents *components = [NSURLComponents componentsWithURL:url resolvingAgainstBaseURL:NO];
+    NSString *query = components.query;
+
+    NSMutableDictionary *params = [[NSMutableDictionary alloc] init];
+
+    NSArray *pairs = [query componentsSeparatedByString:@"&"];
+    [pairs enumerateObjectsUsingBlock:^(NSString *pair, NSUInteger idx, BOOL *stop) {
+        NSArray *comps = [pair componentsSeparatedByString:@"="];
+        if ([comps count] == 2) {
+            params[comps[0]] = comps[1];
+        }
+    }];
+    
+    return params;
+}
 - (NSDictionary*)removeProtocolParamsFromDictionary:(NSDictionary*)dictionary {
     NSMutableDictionary *result = [NSMutableDictionary dictionary];
     

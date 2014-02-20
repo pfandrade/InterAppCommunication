@@ -7,7 +7,6 @@
 //
 
 #import "IACRequest.h"
-#import "NSString+IACExtensions.h"
 
 #if !__has_feature(objc_arc)
 #error InterAppComutication must be built with ARC.
@@ -24,7 +23,7 @@
 - (instancetype)init {
     self = [super init];
     if (self) {
-        self.requestID = [NSString stringWithUUID];
+        self.requestID = [[NSUUID UUID] UUIDString];
     }
     return self;
 }
