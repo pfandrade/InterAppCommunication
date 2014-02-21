@@ -133,27 +133,35 @@ typedef NS_ENUM(NSUInteger, IACResponseType) {
         // Lets see if there is somebody that handles this action
         if (actions[action] || [self.delegate supportsIACAction:action]) {
         
-            IACSuccessBlock success = ^(NSDictionary *returnParams, BOOL cancelled) {
-                if (cancelled) {
-                    if (parameters[kXCUCancel]) {
-                        [self openURL:[NSURL URLWithString:parameters[kXCUCancel]]];
-                    }
-                } else if (parameters[kXCUSuccess]) {
-                    NSURL *url = [self URLByAppendingParams:returnParams toURL:parameters[kXCUSuccess]];
-                    [self openURL:url];
-                }
-            };
+            IACSuccessBlock success = NULL;
             
-            IACFailureBlock failure = ^(NSError *error) {
-                if (parameters[kXCUError]) {
-                    NSDictionary *errorParams = @{ kXCUErrorCode: @([error code]),
-                                                   kXCUErrorMessage: [error localizedDescription],
-                                                   kIACErrorDomain: [error domain]
-                                                   };
-                    NSURL *url = [self URLByAppendingParams:errorParams toURL:parameters[kXCUError]];
-                    [self openURL:url];
-                }
-            };
+            if ([parameters[kXCUSuccess] length] > 0 || [parameters[kXCUCancel] length] > 0) {
+                success = ^(NSDictionary *returnParams, BOOL cancelled) {
+                    if (cancelled) {
+                        if (parameters[kXCUCancel]) {
+                            [self openURL:[NSURL URLWithString:parameters[kXCUCancel]]];
+                        }
+                    } else if (parameters[kXCUSuccess]) {
+                        NSURL *url = [self URLByAppendingParams:returnParams toURL:parameters[kXCUSuccess]];
+                        [self openURL:url];
+                    }
+                };
+            }
+            
+            IACFailureBlock failure = NULL;
+            if ([parameters[kXCUError] length] > 0){
+                failure = ^(NSError *error) {
+                    if (parameters[kXCUError]) {
+                        NSDictionary *errorParams = @{ kXCUErrorCode: @([error code]),
+                                                       kXCUErrorMessage: [error localizedDescription],
+                                                       kIACErrorDomain: [error domain]
+                                                       };
+                        NSURL *url = [self URLByAppendingParams:errorParams toURL:parameters[kXCUError]];
+                        [self openURL:url];
+                    }
+                };
+            }
+
 
             // Handlers take precedence over the delegate
             if (actions[action]) {
@@ -202,7 +210,7 @@ typedef NS_ENUM(NSUInteger, IACResponseType) {
     NSURLComponents *components = [[NSURLComponents alloc] init];
     components.scheme = request.client.URLScheme;
     components.host = kXCUHost;
-    components.path = request.action;
+    components.path = [@"/" stringByAppendingString:request.action];
     
     NSURL *final_url = [components URL];
     final_url = [self URLByAppendingParams:request.parameters toURL:final_url];
