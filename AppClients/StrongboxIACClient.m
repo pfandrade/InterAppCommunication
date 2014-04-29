@@ -8,6 +8,10 @@
 
 #import "StrongboxIACClient.h"
 
+NSString *StrongboxIACParameterSearchString = @"q";
+NSString *StrongboxIACParameterTarget = @"target";
+NSString *StrongboxIACParameterOnBehalfOf = @"onBehalfOf";
+
 @implementation StrongboxIACClient
 
 - (instancetype)init {
@@ -21,8 +25,24 @@
 
 - (void)search:(NSString *)searchString onSuccess:(void(^)(NSDictionary*))onSuccess onFailure:(void(^)(NSError*))onError
 {
-    [self performAction:@"search" parameters:@{@"q":searchString?:@""}
-              onSuccess:onSuccess onFailure:onError];
+    [self search:searchString target:nil onSuccess:onSuccess onFailure:onError];
 }
 
+- (void)search:(NSString *)searchString target:(NSString *)target onSuccess:(void(^)(NSDictionary*))onSuccess onFailure:(void(^)(NSError*))onError
+{
+    [self search:searchString target:target options:nil onSuccess:onSuccess onFailure:onError];
+}
+
+- (void)search:(NSString *)searchString target:(NSString *)target options:(NSDictionary *)options onSuccess:(void(^)(NSDictionary*))onSuccess onFailure:(void(^)(NSError*))onError
+{
+    NSMutableDictionary *parameters = [NSMutableDictionary dictionary];
+    if ([searchString length] > 0) parameters[StrongboxIACParameterSearchString] = searchString;
+    if ([target length] > 0) parameters[StrongboxIACParameterTarget] = target;
+    if (options != nil)  [parameters addEntriesFromDictionary:options];
+    
+    [self performAction:@"search"
+             parameters:parameters
+              onSuccess:onSuccess
+              onFailure:onError];
+}
 @end
