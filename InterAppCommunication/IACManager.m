@@ -142,7 +142,7 @@ typedef NS_ENUM(NSUInteger, IACResponseType) {
                             [self openURL:[NSURL URLWithString:parameters[kXCUCancel]]];
                         }
                     } else if (parameters[kXCUSuccess]) {
-                        NSURL *url = [self URLByAppendingParams:returnParams toURL:parameters[kXCUSuccess]];
+                        NSURL *url = [self URLByAppendingParams:returnParams toURL:[NSURL URLWithString:parameters[kXCUSuccess]]];
                         [self openURL:url];
                     }
                 };
