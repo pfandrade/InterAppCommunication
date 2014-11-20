@@ -8,11 +8,11 @@
 
 #import "IACClient.h"
 
-extern NSString *StrongboxIACParameterSearchString;
-extern NSString *StrongboxIACParameterTarget;
-extern NSString *StrongboxIACParameterOnBehalfOf;
+extern NSString *SecretsIACParameterSearchString;
+extern NSString *SecretsIACParameterTarget;
+extern NSString *SecretsIACParameterOnBehalfOf;
 
-@interface StrongboxIACClient : IACClient
+@interface SecretsIACClient : IACClient
 
 - (void)search:(NSString *)searchString;
 - (void)search:(NSString *)searchString onSuccess:(void(^)(NSDictionary*))onSuccess onFailure:(void(^)(NSError*))onFailure;

@@ -6,16 +6,16 @@
 //  Copyright (c) 2014 Maracujja. All rights reserved.
 //
 
-#import "StrongboxIACClient.h"
+#import "SecretsIACClient.h"
 
-NSString *StrongboxIACParameterSearchString = @"q";
-NSString *StrongboxIACParameterTarget = @"target";
-NSString *StrongboxIACParameterOnBehalfOf = @"onBehalfOf";
+NSString *SecretsIACParameterSearchString = @"q";
+NSString *SecretsIACParameterTarget = @"target";
+NSString *SecretsIACParameterOnBehalfOf = @"onBehalfOf";
 
-@implementation StrongboxIACClient
+@implementation SecretsIACClient
 
 - (instancetype)init {
-    return [self initWithURLScheme:@"strongbox"];
+    return [self initWithURLScheme:@"secrets"];
 }
 
 - (void)search:(NSString *)searchString
@@ -36,8 +36,8 @@ NSString *StrongboxIACParameterOnBehalfOf = @"onBehalfOf";
 - (void)search:(NSString *)searchString target:(NSString *)target options:(NSDictionary *)options onSuccess:(void(^)(NSDictionary*))onSuccess onFailure:(void(^)(NSError*))onError
 {
     NSMutableDictionary *parameters = [NSMutableDictionary dictionary];
-    if ([searchString length] > 0) parameters[StrongboxIACParameterSearchString] = searchString;
-    if ([target length] > 0) parameters[StrongboxIACParameterTarget] = target;
+    if ([searchString length] > 0) parameters[SecretsIACParameterSearchString] = searchString;
+    if ([target length] > 0) parameters[SecretsIACParameterTarget] = target;
     if (options != nil)  [parameters addEntriesFromDictionary:options];
     
     [self performAction:@"search"
