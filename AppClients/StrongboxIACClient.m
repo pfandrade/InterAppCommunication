@@ -1,6 +1,6 @@
 //
-//  StrongboxACClient.m
-//  Strongbox
+//  SecretsACClient.m
+//  Secrets
 //
 //  Created by Paulo Andrade on 18/02/14.
 //  Copyright (c) 2014 Maracujja. All rights reserved.
