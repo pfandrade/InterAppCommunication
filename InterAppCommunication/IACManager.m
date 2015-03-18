@@ -251,7 +251,6 @@ typedef NS_ENUM(NSUInteger, IACResponseType) {
     actions[action] = [handler copy];
 }
 
-
 - (NSURL *)URLByAppendingParams:(NSDictionary *)params toURL:(NSURL *)url
 {
     NSURLComponents *urlComponents = [NSURLComponents componentsWithURL:url resolvingAgainstBaseURL:NO];
@@ -260,7 +259,7 @@ typedef NS_ENUM(NSUInteger, IACResponseType) {
     
     NSMutableArray *paramArray = [NSMutableArray array];
     [params enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
-        [paramArray addObject:[NSString stringWithFormat:@"%@=%@", key, obj]];
+        [paramArray addObject:[NSString stringWithFormat:@"%@=%@", key, [self escapeURLArgument:obj]]];
     }];
     if ([queryString length] == 0) {
         queryString = [paramArray componentsJoinedByString:@"&"];
@@ -282,7 +281,7 @@ typedef NS_ENUM(NSUInteger, IACResponseType) {
     [pairs enumerateObjectsUsingBlock:^(NSString *pair, NSUInteger idx, BOOL *stop) {
         NSArray *comps = [pair componentsSeparatedByString:@"="];
         if ([comps count] == 2) {
-            params[comps[0]] = comps[1];
+            params[comps[0]] = [self unescapeURLArgument:comps[1]];
         }
     }];
     
@@ -324,6 +323,27 @@ typedef NS_ENUM(NSUInteger, IACResponseType) {
 #else
     [[NSWorkspace sharedWorkspace] openURL:url];
 #endif
+}
+
+
+#pragma mark - Escaping/Unescaping URL Arguments
+
+- (NSString *)escapeURLArgument:(NSString *)arg
+{
+    // Encode all the reserved characters, per RFC 3986
+    // (<http://www.ietf.org/rfc/rfc3986.txt>)
+    CFStringRef escaped =
+    CFURLCreateStringByAddingPercentEscapes(kCFAllocatorDefault,
+                                            (__bridge CFStringRef)arg,
+                                            NULL,
+                                            (CFStringRef)@"!*'();:@&=+$,/?%#[]",
+                                            kCFStringEncodingUTF8);
+    return (__bridge_transfer NSString *) escaped;
+}
+
+- (NSString *)unescapeURLArgument:(NSString *)arg
+{
+    return [arg stringByReplacingPercentEscapesUsingEncoding:NSUTF8StringEncoding];
 }
 
 @end
